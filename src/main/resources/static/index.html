@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainSentinel</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">CS</div>
+            <div>
+                <h1>ChainSentinel</h1>
+                <p>Bitcoin transaction risk analysis</p>
+            </div>
+        </div>
+
+        <nav class="nav-list">
+            <a href="#analysis" class="nav-item active">Analysis</a>
+            <a href="#high-risk" class="nav-item">High Risk</a>
+            <a href="#pipeline" class="nav-item">Pipeline</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            <span>API: localhost:8080</span>
+        </div>
+    </aside>
+
+    <main class="content">
+        <section class="topbar">
+            <div>
+                <p class="eyebrow">Security Analytics Platform</p>
+                <h2>On-chain behavior risk console</h2>
+            </div>
+            <button id="refreshHighRiskBtn" class="icon-button" title="Refresh high risk transactions">Refresh</button>
+        </section>
+
+        <section id="analysis" class="section-band">
+            <div class="section-header">
+                <div>
+                    <h3>Transaction Analysis</h3>
+                    <p>Query one transaction hash and review base data, behavior features, and risk output.</p>
+                </div>
+            </div>
+
+            <form id="analysisForm" class="search-row">
+                <input id="txHashInput" type="text" spellcheck="false" autocomplete="off"
+                       placeholder="Paste transaction hash">
+                <button type="submit">Analyze</button>
+            </form>
+
+            <div id="analysisMessage" class="message hidden"></div>
+
+            <div class="summary-grid">
+                <div class="metric-panel">
+                    <span class="metric-label">Risk Level</span>
+                    <strong id="riskLevel">-</strong>
+                </div>
+                <div class="metric-panel">
+                    <span class="metric-label">Anomaly Score</span>
+                    <strong id="anomalyScore">-</strong>
+                </div>
+                <div class="metric-panel">
+                    <span class="metric-label">Block</span>
+                    <strong id="blockId">-</strong>
+                </div>
+                <div class="metric-panel">
+                    <span class="metric-label">Fee Rate</span>
+                    <strong id="feeRate">-</strong>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <section class="detail-panel">
+                    <h4>Transaction</h4>
+                    <dl id="transactionDetails" class="kv-list"></dl>
+                </section>
+                <section class="detail-panel">
+                    <h4>Features</h4>
+                    <dl id="featureDetails" class="kv-list"></dl>
+                </section>
+                <section class="detail-panel">
+                    <h4>Risk Reason</h4>
+                    <p id="riskReason" class="reason-text">No transaction selected.</p>
+                </section>
+            </div>
+        </section>
+
+        <section id="high-risk" class="section-band">
+            <div class="section-header">
+                <div>
+                    <h3>High Risk Transactions</h3>
+                    <p>Paginated HIGH risk records ordered by anomaly score.</p>
+                </div>
+                <div class="pager-controls">
+                    <label>
+                        Page
+                        <input id="pageInput" type="number" min="1" value="1">
+                    </label>
+                    <label>
+                        Size
+                        <input id="sizeInput" type="number" min="1" max="100" value="10">
+                    </label>
+                    <button id="loadHighRiskBtn" type="button">Load</button>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Transaction Hash</th>
+                        <th>Score</th>
+                        <th>Level</th>
+                        <th>Reason</th>
+                    </tr>
+                    </thead>
+                    <tbody id="highRiskTable"></tbody>
+                </table>
+            </div>
+            <p id="highRiskMeta" class="table-meta">No records loaded.</p>
+        </section>
+
+        <section id="pipeline" class="section-band pipeline-band">
+            <div class="section-header">
+                <div>
+                    <h3>Processing Pipeline</h3>
+                    <p>Current MVP flow from public data to risk API.</p>
+                </div>
+            </div>
+            <div class="pipeline">
+                <div>TSV.GZ Raw Data</div>
+                <div>Clean Transactions</div>
+                <div>Extract Features</div>
+                <div>Isolation Forest</div>
+                <div>Risk API</div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

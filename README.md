@@ -43,6 +43,7 @@ Isolation Forest 异常检测
 anomaly_results 表
         ↓
 Spring Boot RESTful API
+内置静态前端页面
 ```
 
 ## 5. 数据来源
@@ -296,7 +297,23 @@ mvn spring-boot:run
 http://localhost:8080/swagger-ui/index.html
 ```
 
-### 10.3 运行 Python 脚本
+### 10.3 访问前端页面
+
+后端启动后访问：
+
+```text
+http://localhost:8080/
+```
+
+前端页面支持：
+
+```text
+交易聚合分析查询
+高风险交易分页列表
+异常分数与风险原因展示
+```
+
+### 10.4 运行 Python 脚本
 
 导入脚本同样读取数据库环境变量：
 
@@ -325,5 +342,5 @@ python scripts/detect_anomalies.py
 - 引入 Redis 缓存热门地址画像
 - 引入 Kafka 模拟实时交易流检测
 - 优化异常原因生成逻辑
-- 增加前端可视化页面
+- 增加更多统计图表和地址画像视图
 - 使用 Docker Compose 管理 MySQL、后端服务和脚本运行环境
