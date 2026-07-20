@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
         return error(exception.getStatus(), exception.getMessage());
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+        return error(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());

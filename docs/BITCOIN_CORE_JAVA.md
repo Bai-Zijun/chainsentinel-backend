@@ -2,7 +2,7 @@
 
 ## Scope
 
-The Java backend exposes three read-only Bitcoin Core JSON-RPC endpoints:
+The Java backend exposes four read-only Bitcoin Core JSON-RPC endpoints:
 
 ```text
 GET /api/node/blockchain
@@ -10,6 +10,8 @@ GET /api/node/network
 GET /api/node/mempool
 GET /api/node/blocks/{height}?txLimit=20
 ```
+
+Manual block persistence and sync status are documented in `BITCOIN_SYNC_JAVA.md`.
 
 The backend verifies that `getblockchaininfo.chain` matches the configured network. The default expected network is `testnet4`.
 

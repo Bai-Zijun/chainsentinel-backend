@@ -1,11 +1,14 @@
 package com.bzj.chainsentinel.integration;
 
 import com.bzj.chainsentinel.entity.AnomalyResult;
+import com.bzj.chainsentinel.entity.SyncRun;
 import com.bzj.chainsentinel.entity.Transaction;
 import com.bzj.chainsentinel.mapper.AnomalyResultMapper;
 import com.bzj.chainsentinel.mapper.TransactionMapper;
 import com.bzj.chainsentinel.service.AnomalyResultService;
+import com.bzj.chainsentinel.service.SyncPersistenceService;
 import com.bzj.chainsentinel.service.TransactionService;
+import com.bzj.chainsentinel.sync.BitcoinBlockData;
 import com.bzj.chainsentinel.vo.PageResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -45,6 +49,9 @@ class MySqlPersistenceIntegrationTest {
     @Autowired
     private AnomalyResultService anomalyResultService;
 
+    @Autowired
+    private SyncPersistenceService syncPersistenceService;
+
     @Test
     void flywaySchemaSupportsQueriesAndRejectsDuplicateTransactions() {
         Transaction transaction = new Transaction();
@@ -70,5 +77,31 @@ class MySqlPersistenceIntegrationTest {
         Transaction duplicate = new Transaction();
         duplicate.setTxHash(TX_HASH);
         assertThrows(RuntimeException.class, () -> transactionMapper.insert(duplicate));
+    }
+
+    @Test
+    void repeatedBackfillKeepsOneCanonicalBlock() {
+        BitcoinBlockData block = new BitcoinBlockData(
+                100L,
+                "0000000000000000000000000000000000000000000000000000000000000100",
+                "0000000000000000000000000000000000000000000000000000000000000099",
+                "0000000000000000000000000000000000000000000000000000000000000200",
+                LocalDateTime.of(2026, 7, 20, 1, 0),
+                12,
+                1_234,
+                2_345
+        );
+
+        SyncRun firstRun = syncPersistenceService.startRun("testnet4", "BACKFILL", 100L, 100L);
+        syncPersistenceService.saveBlockProgress("testnet4", firstRun.getId(), block);
+        syncPersistenceService.completeRun("testnet4", firstRun.getId());
+
+        SyncRun secondRun = syncPersistenceService.startRun("testnet4", "BACKFILL", 100L, 100L);
+        syncPersistenceService.saveBlockProgress("testnet4", secondRun.getId(), block);
+        syncPersistenceService.completeRun("testnet4", secondRun.getId());
+
+        assertEquals(1L, syncPersistenceService.countCanonicalBlocks("testnet4"));
+        assertEquals(100L, syncPersistenceService.getCheckpoint("testnet4").getLastHeight());
+        assertEquals("IDLE", syncPersistenceService.getCheckpoint("testnet4").getStatus());
     }
 }
