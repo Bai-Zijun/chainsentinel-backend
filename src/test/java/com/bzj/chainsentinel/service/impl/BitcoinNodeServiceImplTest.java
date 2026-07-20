@@ -3,7 +3,9 @@ package com.bzj.chainsentinel.service.impl;
 import com.bzj.chainsentinel.client.BitcoinCoreRpcClient;
 import com.bzj.chainsentinel.config.BitcoinProperties;
 import com.bzj.chainsentinel.exception.BitcoinRpcException;
+import com.bzj.chainsentinel.exception.ResourceNotFoundException;
 import com.bzj.chainsentinel.vo.node.BlockchainInfoVO;
+import com.bzj.chainsentinel.vo.node.BlockInfoVO;
 import com.bzj.chainsentinel.vo.node.MempoolInfoVO;
 import com.bzj.chainsentinel.vo.node.NetworkInfoVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -122,6 +125,78 @@ class BitcoinNodeServiceImplTest {
 
         assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatus());
         assertTrue(exception.getMessage().contains("network mismatch"));
+    }
+
+    @Test
+    void returnsBlockWithLimitedTransactionSummaries() throws JsonProcessingException {
+        String blockHash = "1".repeat(64);
+        when(rpcClient.call("getblockhash", List.of(143838L)))
+                .thenReturn(json('"' + blockHash + '"'));
+        when(rpcClient.call("getblock", List.of(blockHash, 2))).thenReturn(json("""
+                {
+                  "hash":"%s",
+                  "confirmations":3,
+                  "height":143838,
+                  "version":536870912,
+                  "merkleroot":"%s",
+                  "time":1783860041,
+                  "mediantime":1783855236,
+                  "nonce":42,
+                  "bits":"1d00ffff",
+                  "difficulty":1,
+                  "chainwork":"%s",
+                  "size":321,
+                  "strippedsize":280,
+                  "weight":1161,
+                  "previousblockhash":"%s",
+                  "nTx":2,
+                  "tx":[
+                    {
+                      "txid":"%s","hash":"%s","version":2,"size":190,
+                      "vsize":109,"weight":436,"locktime":0,
+                      "vin":[{"coinbase":"00"}],"vout":[{"n":0},{"n":1}]
+                    },
+                    {
+                      "txid":"%s","hash":"%s","version":2,"size":131,
+                      "vsize":92,"weight":365,"locktime":143837,
+                      "vin":[{"txid":"%s","vout":0}],"vout":[{"n":0}]
+                    }
+                  ]
+                }
+                """.formatted(
+                blockHash,
+                "2".repeat(64),
+                "3".repeat(64),
+                "4".repeat(64),
+                "a".repeat(64),
+                "a".repeat(64),
+                "b".repeat(64),
+                "c".repeat(64),
+                "d".repeat(64)
+        )));
+
+        BlockInfoVO result = service.getBlockByHeight(143838, 1);
+
+        assertEquals(143838, result.height());
+        assertEquals(2, result.transactionCount());
+        assertEquals(1, result.transactionsReturned());
+        assertTrue(result.transactionsTruncated());
+        assertTrue(result.transactions().get(0).isCoinbase());
+        assertEquals(2, result.transactions().get(0).outputCount());
+    }
+
+    @Test
+    void mapsMissingBlockToNotFound() {
+        when(rpcClient.call("getblockhash", List.of(999999999L))).thenThrow(
+                new BitcoinRpcException(HttpStatus.BAD_GATEWAY, "Block height out of range", -8)
+        );
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> service.getBlockByHeight(999999999L, 20)
+        );
+
+        assertEquals("block at height 999999999 not found", exception.getMessage());
     }
 
     private JsonNode json(String value) throws JsonProcessingException {

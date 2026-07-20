@@ -2,8 +2,11 @@ package com.bzj.chainsentinel.controller;
 
 import com.bzj.chainsentinel.exception.BitcoinRpcException;
 import com.bzj.chainsentinel.exception.GlobalExceptionHandler;
+import com.bzj.chainsentinel.exception.ResourceNotFoundException;
 import com.bzj.chainsentinel.service.BitcoinNodeService;
 import com.bzj.chainsentinel.vo.node.BlockchainInfoVO;
+import com.bzj.chainsentinel.vo.node.BlockInfoVO;
+import com.bzj.chainsentinel.vo.node.BlockTransactionSummaryVO;
 import com.bzj.chainsentinel.vo.node.MempoolInfoVO;
 import com.bzj.chainsentinel.vo.node.NetworkInfoVO;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -93,5 +97,50 @@ class BitcoinNodeControllerTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value(503))
                 .andExpect(jsonPath("$.message").value("bitcoin rpc service unavailable"));
+    }
+
+    @Test
+    void returnsBlockWithTransactionLimit() throws Exception {
+        BlockTransactionSummaryVO transaction = new BlockTransactionSummaryVO(
+                "a".repeat(64), "a".repeat(64), 2, 190, 109,
+                436, 0, 1, 2, true
+        );
+        BlockInfoVO block = new BlockInfoVO(
+                "1".repeat(64), 3, 143838, 536870912,
+                "2".repeat(64), 1783860041L, 1783855236L, 42,
+                "1d00ffff", BigDecimal.ONE, "3".repeat(64),
+                321, 280, 1161, "4".repeat(64), null,
+                2, 1, true, List.of(transaction)
+        );
+        when(bitcoinNodeService.getBlockByHeight(143838, 1)).thenReturn(block);
+
+        mockMvc.perform(get("/api/node/blocks/143838").param("txLimit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.height").value(143838))
+                .andExpect(jsonPath("$.data.transactionCount").value(2))
+                .andExpect(jsonPath("$.data.transactionsReturned").value(1))
+                .andExpect(jsonPath("$.data.transactionsTruncated").value(true))
+                .andExpect(jsonPath("$.data.transactions[0].isCoinbase").value(true));
+    }
+
+    @Test
+    void validatesBlockHeightAndTransactionLimit() throws Exception {
+        mockMvc.perform(get("/api/node/blocks/-1").param("txLimit", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+
+        verifyNoInteractions(bitcoinNodeService);
+    }
+
+    @Test
+    void mapsMissingBlockToHttp404() throws Exception {
+        when(bitcoinNodeService.getBlockByHeight(999999999L, 20)).thenThrow(
+                new ResourceNotFoundException("block at height 999999999 not found")
+        );
+
+        mockMvc.perform(get("/api/node/blocks/999999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("block at height 999999999 not found"));
     }
 }

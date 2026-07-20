@@ -8,6 +8,7 @@ The Java backend exposes three read-only Bitcoin Core JSON-RPC endpoints:
 GET /api/node/blockchain
 GET /api/node/network
 GET /api/node/mempool
+GET /api/node/blocks/{height}?txLimit=20
 ```
 
 The backend verifies that `getblockchaininfo.chain` matches the configured network. The default expected network is `testnet4`.
@@ -42,6 +43,7 @@ mvn spring-boot:run
 curl.exe http://127.0.0.1:8080/api/node/blockchain
 curl.exe http://127.0.0.1:8080/api/node/network
 curl.exe http://127.0.0.1:8080/api/node/mempool
+curl.exe "http://127.0.0.1:8080/api/node/blocks/143838?txLimit=20"
 ```
 
 ## Error Mapping
@@ -49,5 +51,6 @@ curl.exe http://127.0.0.1:8080/api/node/mempool
 - `502`: authentication failure, JSON-RPC error, invalid result, or network mismatch.
 - `503`: credentials are missing or the RPC service is unavailable.
 - `504`: the RPC request timed out.
+- `404`: the requested block height does not exist.
 
 RPC credentials and authorization headers are never written to application logs.

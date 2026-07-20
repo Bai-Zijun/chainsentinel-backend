@@ -3,7 +3,10 @@ package com.bzj.chainsentinel.service.impl;
 import com.bzj.chainsentinel.client.BitcoinCoreRpcClient;
 import com.bzj.chainsentinel.config.BitcoinProperties;
 import com.bzj.chainsentinel.exception.BitcoinRpcException;
+import com.bzj.chainsentinel.exception.ResourceNotFoundException;
 import com.bzj.chainsentinel.service.BitcoinNodeService;
+import com.bzj.chainsentinel.vo.node.BlockInfoVO;
+import com.bzj.chainsentinel.vo.node.BlockTransactionSummaryVO;
 import com.bzj.chainsentinel.vo.node.BlockchainInfoVO;
 import com.bzj.chainsentinel.vo.node.MempoolInfoVO;
 import com.bzj.chainsentinel.vo.node.NetworkInfoVO;
@@ -83,6 +86,89 @@ public class BitcoinNodeServiceImpl implements BitcoinNodeService {
         );
     }
 
+    @Override
+    public BlockInfoVO getBlockByHeight(long height, int transactionLimit) {
+        JsonNode blockHashResult;
+        JsonNode blockResult;
+        try {
+            blockHashResult = rpcClient.call("getblockhash", List.of(height));
+            if (blockHashResult == null || !blockHashResult.isTextual()) {
+                throw invalidResult();
+            }
+            blockResult = rpcClient.call("getblock", List.of(blockHashResult.textValue(), 2));
+        } catch (BitcoinRpcException exception) {
+            if (exception.getRpcCode() != null
+                    && (exception.getRpcCode() == -8 || exception.getRpcCode() == -5)) {
+                throw new ResourceNotFoundException("block at height " + height + " not found");
+            }
+            throw exception;
+        }
+
+        JsonNode block = requireObject(blockResult);
+        JsonNode transactions = requireField(block, "tx");
+        if (!transactions.isArray()) {
+            throw invalidResult();
+        }
+
+        int transactionCount = requireInt(block, "nTx");
+        if (transactionCount != transactions.size()) {
+            throw invalidResult();
+        }
+        int returned = Math.min(transactionLimit, transactions.size());
+        List<BlockTransactionSummaryVO> summaries = new ArrayList<>(returned);
+        for (int index = 0; index < returned; index++) {
+            summaries.add(toTransactionSummary(transactions.get(index)));
+        }
+
+        return new BlockInfoVO(
+                requireText(block, "hash"),
+                requireInt(block, "confirmations"),
+                requireLong(block, "height"),
+                requireInt(block, "version"),
+                requireText(block, "merkleroot"),
+                requireLong(block, "time"),
+                requireLong(block, "mediantime"),
+                requireLong(block, "nonce"),
+                requireText(block, "bits"),
+                requireDecimal(block, "difficulty"),
+                requireText(block, "chainwork"),
+                requireInt(block, "size"),
+                requireInt(block, "strippedsize"),
+                requireInt(block, "weight"),
+                optionalText(block, "previousblockhash"),
+                optionalText(block, "nextblockhash"),
+                transactionCount,
+                summaries.size(),
+                transactionCount > summaries.size(),
+                List.copyOf(summaries)
+        );
+    }
+
+    private BlockTransactionSummaryVO toTransactionSummary(JsonNode transaction) {
+        JsonNode object = requireObject(transaction);
+        JsonNode inputs = requireField(object, "vin");
+        JsonNode outputs = requireField(object, "vout");
+        if (!inputs.isArray() || !outputs.isArray()) {
+            throw invalidResult();
+        }
+
+        boolean coinbase = !inputs.isEmpty()
+                && inputs.get(0).isObject()
+                && inputs.get(0).has("coinbase");
+        return new BlockTransactionSummaryVO(
+                requireText(object, "txid"),
+                requireText(object, "hash"),
+                requireInt(object, "version"),
+                requireInt(object, "size"),
+                requireInt(object, "vsize"),
+                requireInt(object, "weight"),
+                requireLong(object, "locktime"),
+                inputs.size(),
+                outputs.size(),
+                coinbase
+        );
+    }
+
     private JsonNode requireObject(JsonNode value) {
         if (value == null || !value.isObject()) {
             throw invalidResult();
@@ -136,6 +222,17 @@ public class BitcoinNodeServiceImpl implements BitcoinNodeService {
             throw invalidResult();
         }
         return value.booleanValue();
+    }
+
+    private String optionalText(JsonNode object, String field) {
+        JsonNode value = object.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            throw invalidResult();
+        }
+        return value.textValue();
     }
 
     private List<String> readWarnings(JsonNode warnings) {

@@ -12,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
@@ -93,5 +95,23 @@ class BitcoinCoreRpcClientTest {
 
         assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatus());
         assertEquals(-32601, exception.getRpcCode());
+    }
+
+    @Test
+    void sendsRpcParameters() {
+        server.expect(requestTo("http://127.0.0.1:18443/"))
+                .andExpect(jsonPath("$.method").value("getblockhash"))
+                .andExpect(jsonPath("$.params[0]").value(143838))
+                .andRespond(withSuccess(
+                        """
+                        {"jsonrpc":"2.0","result":"00000000007fa7a85dbda09f7e957cc5b0fa22a548917375119178e4da885048","id":"chainsentinel"}
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        JsonNode result = client.call("getblockhash", List.of(143838));
+
+        assertEquals(64, result.textValue().length());
+        server.verify();
     }
 }
