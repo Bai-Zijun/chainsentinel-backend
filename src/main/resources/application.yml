@@ -44,3 +44,10 @@ info:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} requestId=%X{requestId:-} thread=%thread logger=%logger{36} message=%msg%n"
+
+bitcoin:
+  rpc-url: ${BITCOIN_RPC_URL:http://127.0.0.1:18443}
+  rpc-user: ${BITCOIN_RPC_USER:}
+  rpc-password: ${BITCOIN_RPC_PASSWORD:}
+  rpc-timeout: ${BITCOIN_RPC_TIMEOUT:10}
+  network: ${BITCOIN_NETWORK:testnet4}

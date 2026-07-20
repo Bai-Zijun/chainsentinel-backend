@@ -17,6 +17,17 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BitcoinRpcException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBitcoinRpc(BitcoinRpcException exception) {
+        log.warn(
+                "Bitcoin RPC request failed status={} rpcCode={} message={}",
+                exception.getStatus().value(),
+                exception.getRpcCode(),
+                exception.getMessage()
+        );
+        return error(exception.getStatus(), exception.getMessage());
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());
