@@ -28,7 +28,8 @@ public class AnomalyResultServiceImpl implements AnomalyResultService {
     public List<AnomalyResult> listHighRisk(int limit) {
         LambdaQueryWrapper<AnomalyResult> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AnomalyResult::getRiskLevel, "HIGH")
-                .orderByDesc(AnomalyResult::getAnomalyScore);
+                .orderByDesc(AnomalyResult::getAnomalyScore)
+                .orderByAsc(AnomalyResult::getId);
 
         Page<AnomalyResult> page = new Page<>(1, limit);
         return anomalyResultMapper.selectPage(page, wrapper).getRecords();
@@ -38,7 +39,8 @@ public class AnomalyResultServiceImpl implements AnomalyResultService {
     public PageResult<AnomalyResult> pageHighRisk(long page, long size) {
         LambdaQueryWrapper<AnomalyResult> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AnomalyResult::getRiskLevel, "HIGH")
-                .orderByDesc(AnomalyResult::getAnomalyScore);
+                .orderByDesc(AnomalyResult::getAnomalyScore)
+                .orderByAsc(AnomalyResult::getId);
 
         Page<AnomalyResult> pageParam = new Page<>(page, size);
         Page<AnomalyResult> result = anomalyResultMapper.selectPage(pageParam, wrapper);
